@@ -124,8 +124,93 @@ if [ -n "$NETCDF" ] ; then
     NETCDFF="-lnetcdff"
   fi
 else
-  echo "Will configure for use without NetCDF"
+#  echo "Will configure for use without NetCDF"
+  echo "ERROR, need NetCDF to build WPS!"
+  exit 1
 fi
+
+# EMK NUWRF...From WRF 3.5.1 configure
+if [ -z "$HDF5_PATH" ] ; then HDF5_PATH=''; fi
+if [ -z "$ZLIB_PATH" ] ; then ZLIB_PATH=''; fi
+if [ -z "$GPFS_PATH" ] ; then GPFS_PATH=''; fi
+if [ -z "$CURL_PATH" ] ; then CURL_PATH=''; fi
+
+if [ -n "$NETCDF4" ] ; then
+  if [ $NETCDF4 -eq 1 ] ; then
+    DEP_LIB_PATH=''
+    if [ -f $NETCDF/bin/nf-config ] ; then
+      nx_config="$NETCDF/bin/nf-config --flibs"
+      DEP_LIB_PATH="`$nx_config | awk '{for(i=1;i<=NF;i++){if(match($i, /-L.*/)) {print $i} } }'`"
+      CURL="`$nx_config | awk '{for(i=1;i<=NF;i++){if($i == "-lcurl") {print $i}} }'`"
+      GPFS="`$nx_config | awk '{for(i=1;i<=NF;i++){if($i == "-lgpfs") {print $i}} }'`"
+    fi
+    if [ "$DEP_LIB_PATH" = '' ] ; then
+      if [ -f $NETCDF/bin/nc-config ] ; then
+        nx_config="$NETCDF/bin/nc-config --libs"
+        DEP_LIB_PATH="`$nx_config | awk '{for(i=1;i<=NF;i++){if(match($i, /-L.*/)) {print $i} } }'`"
+        CURL="`$nx_config | awk '{for(i=1;i<=NF;i++){if($i == "-lcurl") {print $i} } }'`"
+        GPFS="`$nx_config | awk '{for(i=1;i<=NF;i++){if($i == "-lgpfs") {print $i} } }'`"
+        if [ "$CURL" != '' -a  "$CURL_PATH" = '' ] ; then
+           CURL_PATH="DEFAULT"
+        fi
+        if [ "$GPFS" != '' -a  "$GPFS_PATH" = '' ] ; then
+           GPFS_PATH="DEFAULT"
+        fi
+      fi
+    fi
+    for P in "$HDF5_PATH" "$ZLIB_PATH" "$GPFS_PATH" "$CURL_PATH"
+    do
+      if [ "$P" != '' -a "$P" != "DEFAULT" ] ; then 
+        if [ "${P#${P%?}}" = "/" ] ; then
+          P=`echo $P | sed 's/\/$//'`
+        fi
+        DEP_LIB_PATH="`echo $DEP_LIB_PATH | awk -v VAR=-L$P/lib '{for(i=1;i<=NF;i++){if ($i != VAR ) {print $i} } }'`"
+        DEP_LIB_PATH="$DEP_LIB_PATH -L$P/lib"
+      fi
+    done
+    if [ "${NETCDF#${NETCDF%?}}" = "/" ] ; then
+      NETCDF=`echo $NETCDF | sed 's/\/$//'`
+    fi
+    buff="`ls -l $NETCDF | sed 's/  */ /g'`"
+    while [ "`echo $buff | grep '\->'`" != ""  ]
+    do
+      buff="`echo $buff | sed -e 's/->//' -e 's/  */ /g'`"
+      n=`echo $buff | wc -w`
+      lastword=`echo "$buff" | cut -d' ' -f$n | sed 's/\/$//'`
+      c="`echo $lastword | cut -c1`"
+      if [ "$c" == "/" ] ; then
+         NETCDF=$lastword
+      else
+        c="`echo $lastword | cut -c1-2`"
+        if [ "$c" = "./" ] ; then
+          lastword="echo $lastword | cut -c3-"
+        fi
+        NETCDF=${NETCDF%/*}/$lastword
+      fi
+      buff="`ls -l $NETCDF | sed 's/  */ /g'`"
+    done 
+    if [ "`echo $NETCDF | grep '..'`"  != "" ] ; then
+      buff="`echo $NETCDF | sed -e 's/^\///' -e 's/\// /g'`"
+      n=`echo $buff | wc -w`
+      i=1
+      while [ $i -le $n ]
+      do
+        if [ "`echo $buff | cut -d' ' -f$i`" = ".." ] ; then
+          m=$i 
+        fi
+        i=$(( $i + 1 ))
+      done
+      m=$(( $m + 1 ))
+      NETCDF=/"`echo $buff | cut -d' ' -f${m}- | sed 's/  */\//g'`"
+    fi
+    if [ "${DEP_LIB_PATH#${DEP_LIB_PATH%?}}" = "/" ] ; then
+      DEP_LIB_PATH=`echo $DEP_LIB_PATH | sed 's/\/$//'`
+    fi
+    DEP_LIB_PATH="`echo $DEP_LIB_PATH | awk -v VAR=-L$NETCDF/lib '{for(i=1;i<=NF;i++){if ($i != VAR ) {print $i} } }'`"
+  fi
+fi
+
+# EMK NUWRF END
 
   # if the uname command exists, give it a shot and see if
   # we can narrow the choices; otherwise, spam 'em
@@ -150,47 +235,9 @@ if [ $? -eq 0 ] ; then
     fi
 fi
 
-wrf_dir="none"
-standard_wrf_dirs="WRF WRF-4.0.3 WRF-4.0.2 WRF-4.0.1 WRF-4.0 WRFV3"
-
-#
-# If no WRF_DIR environment variable is set, try to locate a WRF build in one
-# of the expected directory names one directory level up; otherwise, try to use
-# the WRF I/O library from the code in $WRF_DIR
-#
-if [ -z "$WRF_DIR" ]; then
-#   for d in WRF WRF-4.0.3 WRF-4.0.2 WRF-4.0.1 WRF-4.0 WRFV3; do
-   for d in ${standard_wrf_dirs}; do
-      if [ -e ../${d}/external/io_netcdf/libwrfio_nf.a ]; then
-         echo "Found what looks like a valid WRF I/O library in ../${d}"
-         wrf_dir="../${d}"
-         break
-      fi
-   done
-else
-   if [ ! -e ${WRF_DIR}/external/io_netcdf/libwrfio_nf.a ]; then
-      echo ""
-      echo "Error: The \$WRF_DIR environment variable was set, but the WRF code at"
-      echo "       ${WRF_DIR} doesn't appear to have been successfully compiled"
-      echo ""
-      exit
-   fi
-
-   echo "Using WRF I/O library in WRF build identified by \$WRF_DIR: ${WRF_DIR}"
-   wrf_dir=$WRF_DIR
-fi
-
-if [ $wrf_dir = "none" ]; then
-   echo ""
-   echo "Error: No compiled WRF code found. Please check that the WRF model has been compiled"
-   echo "       one directory level up (i.e., ../) in a directory named 'WRF', 'WRF-4.0.3', 'WRF-4.0.2', etc.,"
-   echo "       or specify the full path to the compiled WRF model with the environment variable \$WRF_DIR ."
-   echo ""
-   exit
-fi
-
 # Found perl, so proceed with configuration
-perl arch/Config.pl -perl=$PERL -netcdf=$NETCDF -netcdff=$NETCDFF -os=$os -mach=$mach -wrfdir=$wrf_dir
+# EMK NUWRF...Added netCDF4 support
+perl arch/Config.pl -perl=$PERL -netcdf=$NETCDF -netcdff=$NETCDFF -os=$os -mach=$mach -gpfs=$GPFS_PATH -curl=$CURL_PATH -dep_lib_path="$DEP_LIB_PATH"
 
 
 #Checking cross-compiling capability for some particular environment 
@@ -351,14 +398,21 @@ cat > fort_netcdf.f <<EOF
         program foo
         include 'netcdf.inc'
         integer ncid , status 
-        status = nf_open ( 'foo.nc' , 0 , ncid ) 
+        status = nf_open ( 'foo.nc' , NF_WRITE , ncid ) 
         print *,'status = ',status
         end program
 EOF
     FFLAGS=`grep ^FFLAGS configure.wps | cut -d"=" -f2-`
     cp $NETCDF/include/netcdf.inc .
     FC=`grep ^SFC configure.wps | cut -d"=" -f2-`
-    $FC ${FFLAGS} fort_netcdf.f -o fort_netcdf -L${NETCDF}/lib $NETCDFF -lnetcdf > /dev/null 2>&1 
+    if [ "$NETCDF4" -eq 1 ] ; then
+	NETCDF4_LIBS="$DEP_LIB_PATH -lhdf5_hl -lhdf5 -lz -ldl"
+#    else
+#	echo "ERROR, must use netCDF4 with NUWRF WPS!"
+#	exit 1
+    fi
+    $FC ${FFLAGS} fort_netcdf.f -o fort_netcdf -L${NETCDF}/lib $NETCDFF -lnetcdf $NETCDF4_LIBS >& fort_netcdf.f.log
+
     if [ -f "fort_netcdf" ] ; then
       ./fort_netcdf > /dev/null 2>&1
       if [ $? = 0 ]; then
@@ -367,11 +421,13 @@ EOF
         echo
         echo "Your Fortran + NETCDF did not run successfully."
         echo
+	exit 1 # EMK NUWRF
       fi
     else
       echo
       echo "Your versions of Fortran and NETCDF are not consistent."
       echo
+      exit 1 # EMK NUWRF
     fi
 
 cat > c_test.c <<EOF
@@ -422,11 +478,13 @@ EOF
         echo
         echo "Your Fortran + C did not run successfully."
         echo
+	exit 1 # EMK NUWRF
       fi
     else
       echo
       echo "Your versions of Fortran and C are not consistent."
       echo
+      exit 1 # EMK NUWRF
     fi
 
   fi

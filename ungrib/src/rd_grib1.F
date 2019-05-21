@@ -22,8 +22,6 @@
 !                 file GRIBFLNM must be opened, and the value of IUARR(IUNIT) !
 !                 becomes the UNIX File descriptor to read from.              !
 !       DEBUG_LEVEL Integer for various amounts of printout.                    !
-!       EC_REC_LEN :  Record length for EC ds113.0 files.                     !
-!       PMIN    : Minimum pressure level (Pa) to process.                     !
 !                                                                             !
 !    Output:                                                                  !
 !       LEVEL    : The pressure-level (Pa) of the field to process.           !
@@ -62,7 +60,7 @@
 !                                                                             !
 !*****************************************************************************!
 SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
-     ierr, iuarr, debug_level, ec_rec_len, pmin)
+     ierr, iuarr, debug_level)
   use table
   use gridinfo
   use datarray
@@ -70,7 +68,7 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
 
   implicit none
 
-  integer :: debug_level, ec_rec_len
+  integer :: debug_level
   integer :: iunit ! Array number in IUARR assigned to the C read pointer.
   integer, dimension(100) :: KSEC1
   integer, dimension(10) :: KSEC2 
@@ -93,7 +91,6 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
   integer :: i, lvl2, lvl1
   character(LEN=19) :: hdate
   integer :: igherr
-  real :: pmin
 
 ! Variables for thinned grids:
   logical :: lthinned = .FALSE.
@@ -127,7 +124,7 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
 
 ! Read a single GRIB record, but do no unpacking now:
 
-  call gribget(iuarr(iunit), ierr, ec_rec_len)
+  call gribget(iuarr(iunit), ierr)
 
   if (ierr.ne.0) then
      call mprintf(.true.,DEBUG,"RD_GRIB1 gribget read error, ierr = %i",i1=ierr)
@@ -137,7 +134,7 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
 !
 ! Unpack the header information:
 !
-  call gribheader(debug_level,igherr,ec_rec_len)
+  call gribheader(debug_level,igherr)
   if (igherr /= 0) then
      field = "NULL"
      call deallogrib
@@ -299,7 +296,6 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
                  level = -999.
                  if (ktype.eq.100) then ! Pressure-level
                     level=lvl1
-		    if ( level .lt. pmin ) field = 'NULL'
                  elseif (ktype.eq.102) then
                     level=201300.
                  elseif ((ktype.eq.116.and.lvl1.le.50.and.lvl2.eq.0) .or. &
@@ -403,7 +399,7 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
      map%lon1 = ginfo(4)
      !  If this is global data, then the dx and dy are more accurately
      !  computed by the number of points than the 3 digits grib permits.
-     if ( ABS(map%nx * map%dx - 360.) .lt. 2. ) then         ! Check if it's a global grid
+     if ( ABS(map%nx * map%dx - 360.) .lt. 1 ) then
         if ( ABS ( map%dx - (360./real(map%nx)) ) .gt. 0.00001 ) then
            !print *,'old dx = ',ginfo(8)
            map%dx = 360./real(map%nx)
@@ -477,7 +473,7 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
      if (tmp8(5:5) .eq. '0') map%grid_wind = .false.
 !  If this is global data, then the dx and dy are more accurately
 !  computed by the number of points than the 3 digits grib permits.
-     if ( ABS(map%nx * map%dx - 360.) .lt. 2. ) then         ! Check if it's a global grid
+     if ( ABS(map%nx * map%dx - 360.) .lt. 1. ) then
         if ( ABS ( map%dx - (360./real(map%nx)) ) .gt. 0.00001 ) then
          ! print *,'old dx = ',ginfo(8)
            map%dx = 360./real(map%nx)

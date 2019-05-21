@@ -11,12 +11,29 @@
 # then rerun configure.
 #
 
+#### NETCDF4 pieces
+
+NETCDF4_IO_OPTS = -DUSE_NETCDF4_FEATURES -DWRFIO_NCD_LARGE_FILE_SUPPORT
+GPFS            =
+CURL            =
+HDF5            =
+ZLIB            =
+DEP_LIB_PATH    = CONFIGURE_DEP_LIB_PATH
+NETCDF4_DEP_LIB = $(DEP_LIB_PATH) $(HDF5) $(ZLIB) $(GPFS) $(CURL)
+
+# NETCDF4INCLUDEGOESHERE
+
 .SUFFIXES: .F .f .c .o
 
 SHELL           	=       /bin/sh
 
+COMPRESSION_LIBS        = $(WPS_GRIB2_LIBS)
+
+COMPRESSION_INC         = $(WPS_GRIB2_INC)
+
 NCARG_LIBS		=	-L$(NCARG_ROOT)/lib -lncarg -lncarg_gks -lncarg_c \
-				-lX11 -lXext -lpng -lz -lcairo -lfontconfig -lpixman-1 \
+				-L/usr/X11R6/lib64 -lX11 \
+				-lXext -lpng -lz -lcairo -lfontconfig -lpixman-1 \
 				-lfreetype -lexpat -lpthread -lbz2 -lXrender -lgfortran -lgcc
 
 NCARG_LIBS2		=	# May be overridden by architecture specific value below
@@ -32,7 +49,7 @@ PERL			=	perl
 
 RANLIB			=	echo
 
-WRF_DIR = CONFIGURE_WRF_PATH
+WRF_DIR			=	../WRF_3.9.1
 
 WRF_INCLUDE     =       -I$(WRF_DIR)/external/io_netcdf \
                         -I$(WRF_DIR)/external/io_grib_share \
@@ -45,7 +62,7 @@ WRF_LIB         =       -L$(WRF_DIR)/external/io_grib1 -lio_grib1 \
                         -L$(WRF_DIR)/external/io_grib_share -lio_grib_share \
                         -L$(WRF_DIR)/external/io_int -lwrfio_int \
                         -L$(WRF_DIR)/external/io_netcdf -lwrfio_nf \
-                        -L$(NETCDF)/lib CONFIGURE_NETCDFF_LIB -lnetcdf
+                        -L$(NETCDF)/lib CONFIGURE_NETCDFF_LIB -lnetcdf $(NETCDF4_DEP_LIB)
 
 #### Architecture specific settings ####
 

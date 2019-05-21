@@ -588,7 +588,6 @@ subroutine rrpr(hstart, ntimes, interval, nlvl, maxlvl, plvl, &
 
 ! Repair GFS and ECMWF pressure-level RH
         if (index(map%source,'NCEP GFS') .ne. 0 .or.  &
-            index(map%source,'NCEP GEFS') .ne. 0 .or. &
             index(map%source,'NCEP CDAS CFSV2') .ne. 0 .or.  &
             index(map%source,'ECMWF') .ne. 0 ) then
           call mprintf(.true.,DEBUG, &
@@ -759,10 +758,8 @@ subroutine rrpr(hstart, ntimes, interval, nlvl, maxlvl, plvl, &
         if (index(map%source,'NCEP GFS') .ne. 0 ) then
           call mprintf(.true.,DEBUG, &
              "RRPR:   Adjusting GFS masked fields ")
-	     if ( is_there(200100, 'ST000010')) then
-               call get_dims(200100, 'ST000010')
-               call fix_gfs_miss (map%nx, map%ny, 200100.)
-	     endif
+             call get_dims(200100, 'ST000010')
+             call fix_gfs_miss (map%nx, map%ny, 200100.)
         endif
 
 ! Add residual soil moisture to SOILM* if initialized from the GSD RUC model or from NCEP RUC
@@ -1197,8 +1194,8 @@ subroutine vntrp(plvl, maxlvl, k, k2, interp_type, name, ix, jx)
   real :: frc
   integer :: interp_type
 
-  write(*,'("Interpolating to fill in ", A, " at level ", F8.2, " hPa using levels ", F8.2," hPa and ",& 
-     & F8.2," hPa")') trim(name), plvl(k)/100.0,plvl(k-1)/100.0, plvl(k2)/100.0
+  write(*,'("Interpolating to fill in ", A, " at level ", F8.2, " hPa using levels ", F8.2," hPa and ", &
+            F8.2," hPa")') trim(name), plvl(k)/100.0,plvl(k-1)/100.0, plvl(k2)/100.0
   call mprintf(.true.,INFORM, &
     "RRPR: Interpolating to fill in %s at %i Pa using levels %i Pa and %i Pa",&
     s1=trim(name), i1=int(plvl(k)), i2=int(plvl(k-1)), i3=int(plvl(k2)))

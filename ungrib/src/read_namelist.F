@@ -1,6 +1,6 @@
 subroutine read_namelist(hstart, hend, delta_time, ntimes,&
      ordered_by_date, debug_level, out_format, prefix,    &
-     add_lvls, new_plvl_in, interp_type, ec_rec_len, pmin)
+     add_lvls, new_plvl_in, interp_type)
 
   use misc_definitions_module
   use module_debug
@@ -15,8 +15,7 @@ subroutine read_namelist(hstart, hend, delta_time, ntimes,&
   integer :: debug_level
   real, dimension(:) :: new_plvl_in
   logical :: add_lvls
-  integer :: interp_type, ec_rec_len
-  real :: pmin
+  integer :: interp_type
 
   integer :: ierr
   integer :: idts
@@ -70,7 +69,7 @@ subroutine read_namelist(hstart, hend, delta_time, ntimes,&
 
   namelist /ungrib/ out_format, &
        ordered_by_date, prefix, &
-       add_lvls, new_plvl, interp_type, ec_rec_len, pmin
+       add_lvls, new_plvl, interp_type
 
   allocate(new_plvl(size(new_plvl_in)))
 
@@ -98,8 +97,6 @@ subroutine read_namelist(hstart, hend, delta_time, ntimes,&
   add_lvls = .false.
   new_plvl = -99999.
   interp_type = 0
-  ec_rec_len = 0
-  pmin = 100.    ! default is 1 hPa (48 km)
 
 ! Start routine:
 

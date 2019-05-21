@@ -3,7 +3,6 @@
 !  Usage: "g1print [-v] [-V] filename"
 !
 !  Originally from gribscan.
-!  January 2019: Length of field changed from 5 to 7.
 ! 
 program g1print
   use module_grib
@@ -25,18 +24,15 @@ program g1print
   integer :: ierr, igherr
   integer :: cc
   character(len=100) :: fmt = '(I4,1X, &
-       & I3,1x, A7,1x, &
+       & I3,1x, A5,1x, &
        & I4, &
        & 2(1x,I4),2x,I4.4,2("-",I2.2),"_",I2.2,":",&
        & I2.2, 1x, "+", i3.2)'
   logical :: ivb = .FALSE.
   logical :: idb = .FALSE.
   integer :: year
-  character(len=7) :: field
-  integer :: ec_rec_len
+  character(len=5) :: field
 
-  ec_rec_len = 0
-! ec_rec_len = 26214508
   flnm = ' '
   call parse_args(ierr, a1='v', l1=ivb, a2='V', l2=idb, hlast=flnm)
   if (ierr.ne.0) then
@@ -62,13 +58,13 @@ program g1print
   endif 
 
   irec = 0
-  call gribget(munit, ierr, ec_rec_len)
+  call gribget(munit, ierr)
   do while (ierr.eq.0) 
      irec = irec + 1
-     call gribheader(0,igherr, ec_rec_len)
+     call gribheader(0,igherr)
      if (igherr /= 0) then
         call deallogrib
-        call gribget(munit, ierr, ec_rec_len)
+        call gribget(munit, ierr)
         cycle
      endif
 
@@ -115,7 +111,7 @@ program g1print
 
      call deallogrib
 
-     call gribget(munit, ierr, ec_rec_len)
+     call gribget(munit, ierr)
   enddo
   if (ierr.eq.1) write(*,'(/,"***** End-Of-File on C unit ", I3,/)') munit
   call c_close( munit, 0, ierr)
@@ -271,12 +267,12 @@ end subroutine parse_args
 !  procid - process id
 !  param - parameter number
 !  subc - sub center
-!  field - 7-character field name (returned)
+!  field - 5-character field name (returned)
 
     integer, intent(in) :: ptv, centerid, procid, param, subc
     logical :: first=.true.
-    character (len=7), intent(out) :: field
-    character(len=7) :: table2(255), table129(255), afwa(255), ecmwf(255), &
+    character (len=5), intent(out) :: field
+    character(len=5) :: table2(255), table129(255), afwa(255), ecmwf(255), &
       table130(255), table131(255), table132(255)
     common /paramids/ table2, table129, table130, table131, table132, afwa, ecmwf
 
@@ -312,7 +308,7 @@ end subroutine parse_args
 end subroutine fieldname 
 !
      subroutine init_tables
-    character(len=7) :: table2(255), table129(255), afwa(255), ecmwf(255), &
+    character(len=5) :: table2(255), table129(255), afwa(255), ecmwf(255), &
       table130(255), table131(255),  table132(255)
     common /paramids/ table2, table129, table130, table131, table132, afwa, ecmwf
 
@@ -500,13 +496,11 @@ end subroutine fieldname
          ecmwf(238) = 'TSN  '
          ecmwf(239) = 'CSF  '
          ecmwf(240) = 'LSF  '
-         ecmwf(246) = 'CLWC '
-         ecmwf(247) = 'CIWC '
          ecmwf(248) = 'CC   '
 end subroutine init_tables
 
     block data  ptables
-    character(len=7) :: table2(255), table129(255), afwa(255), ecmwf(255), &
+    character(len=5) :: table2(255), table129(255), afwa(255), ecmwf(255), &
       table130(255), table131(255), table132(255)
     common /paramids/ table2, table129, table130, table131, table132, afwa, ecmwf
 
