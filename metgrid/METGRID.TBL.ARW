@@ -594,7 +594,7 @@ name=SPECCLDF
         flag_in_output=FLAG_SPECCLDF
 ========================================
 name=TAVGSFC
-        interp_option=four_pt
+        interp_option=sixteen_pt+four_pt
         fill_missing=0.
         fill_lev=200100:TT(200100)
         flag_in_output=FLAG_TAVGSFC
@@ -634,7 +634,7 @@ mpas_name=uReconstructMeridional
         fill_lev=200100:const(-1.E30)
 ========================================
 name=SST
-        interp_option=sixteen_pt+four_pt
+        interp_option=sixteen_pt+four_pt+wt_average_4pt+wt_average_16pt
         fill_missing=0.
         missing_value=-1.E30
         flag_in_output=FLAG_SST
@@ -1012,6 +1012,20 @@ name=HGTMAXW
         interp_option=four_pt
         flag_in_output=FLAG_HGTMAXW
 ========================================
+name=NDVI
+        interp_option=average_gcell(2.0)+four_pt+average_4pt+average_16pt+search
+        interp_mask=landmask(0) 
+        masked=water
+        missing_value=-9999.
+        fill_missing=0.
+========================================
+name=BARE_DYN
+        interp_option=average_gcell(2.0)+four_pt+average_4pt+average_16pt+search
+        interp_mask=landmask(0) 
+        masked=water
+        missing_value=-9999.
+        fill_missing=0.
+===============================================
 name=QNWFA
         z_dim_name=num_qnwfa_levels
         interp_option=four_pt+average_4pt

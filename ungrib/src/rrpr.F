@@ -849,6 +849,14 @@ subroutine rrpr(hstart, ntimes, interval, nlvl, maxlvl, plvl, &
         endif
         endif
 
+! EMK NUWRF...Set SST over land to missing value
+        if (index(map%source,'ECMWF') .ne. 0) then
+           if (is_there(200100,'LANDSEA') .and. &
+               is_there(200100,'SST')) then
+              call fix_ecmwf_land_sst(map%nx, map%ny, 200100.)
+           end if
+        end if
+
 ! NCEP GFS weasd is one-half of the NAM value. Increase it for use in WRF.
 ! The GFS-based reanalyses values should be OK as is.
         if ((index(map%source,'NCEP GFS') .ne. 0 .or. &
@@ -924,6 +932,16 @@ subroutine rrpr(hstart, ntimes, interval, nlvl, maxlvl, plvl, &
            deallocate(scr2d)
         endif
 
+! EMK NUWRF...Make sure "missing" SST values are -1.E30.  Some sources use
+! -9999., which confuses METGRID.
+        if (is_there(200100, 'SST')) then
+           call get_dims(200100, 'SST')
+           allocate(scr2d(map%nx,map%ny))
+           call get_storage(200100, 'SST', scr2d, map%nx, map%ny)
+           call fix_missing_sst(map%nx, map%ny, scr2d)
+           call put_storage(200100, 'SST', scr2d, map%nx, map%ny)
+           deallocate(scr2d)
+        endif
 
         call mprintf(.true.,INFORM, &
            "RRPR: hdate = %s ",s1=hdate)
@@ -1395,5 +1413,47 @@ subroutine fix_ruc_soilm (ix, jx)
   deallocate(soilcat)
 
 end subroutine fix_ruc_soilm
- 
 
+! EMK NUWRF...Fix ECMWF SST field over land.  Should be reset to obviously
+! bad value, not to freezing mark.
+subroutine fix_ecmwf_land_sst(ix, jx, plvl)
+
+   use storage_module
+
+   implicit none
+
+   integer,intent(in) :: ix, jx
+   real,intent(in) :: plvl
+
+   real,dimension(ix,jx) :: sst, landsea
+   integer :: i,j
+
+   call get_storage(nint(plvl),'SST', sst, ix, jx)
+   call get_storage(nint(plvl),'LANDSEA', landsea, ix, jx)
+   do j = 1,jx
+      do i = 1,ix
+         if (landsea(i,j) > 0.5) then
+            sst(i,j) = -1.e30 ! Missing value
+         end if
+      end do
+   end do
+   call put_storage(nint(plvl),'SST', sst, ix, jx)
+   
+end subroutine fix_ecmwf_land_sst
+
+! EMK NUWRF...Make sure "missing" SST values are -1.E30.  Some sources use
+! -9999., which confuses METGRID.
+subroutine fix_missing_sst(nx,ny,sst)
+   implicit none
+   integer,intent(in) :: nx
+   integer,intent(in) :: ny
+   real,intent(inout) :: sst(nx,ny)
+   integer :: i,j
+   do j = 1,ny
+      do i = 1,nx
+         if (sst(i,j) < 0) then
+            sst(i,j) = -1.E30 ! From METGRID.TBL
+         end if
+      end do
+   end do
+end subroutine fix_missing_sst

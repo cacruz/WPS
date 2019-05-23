@@ -54,7 +54,8 @@ subroutine datint(fuldates, nful, hstart, ntimes, interval, out_format, prefix)
      call geth_newdate(hdate(1:19), hstart(1:19), (itime-1)*interval)
      call mprintf(.true.,STDOUT,"Looking for data at time %s",s1=hdate(1:datelen))
      call mprintf(.true.,LOGFILE,"Looking for data at time %s",s1=hdate(1:datelen))
-     do iful = 1, nful
+!     do iful = 1, nful
+     do iful = 1, nful-1 ! EMK NUWRF Bug fix
         if (fuldates(iful).eq.hdate) then
 	   call mprintf(.true.,STDOUT,"Found file:      %s:%s", &
 	         s1=trim(prefix),s2=hdate(1:datelen))
@@ -294,6 +295,9 @@ subroutine datint(fuldates, nful, hstart, ntimes, interval, out_format, prefix)
            cycle TIMELOOP
         endif
      enddo
+
+     ! EMK NUWRF
+     if (iful .eq. nful) cycle TIMELOOP
 
      call mprintf(.true.,ERROR, &
         "Data not found: %s",s1=hdate)

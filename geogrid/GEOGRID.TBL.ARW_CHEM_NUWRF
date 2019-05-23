@@ -115,11 +115,13 @@ name=GREENFRAC
         priority=1
         dest_type=continuous
         interp_option=modis_fpar:average_gcell(4.0)+four_pt+average_4pt+average_16pt+search
+        interp_option=gvfsport:four_pt+average_4pt+average_16pt+search
         interp_option=default:four_pt+average_4pt+average_16pt+search
         z_dim_name=month
         masked = water
         fill_missing = 0.
         rel_path=modis_fpar:greenfrac_fpar_modis/
+        rel_path=gvfsport:gvfsport/
         rel_path=default:greenfrac/
 ===============================
 name=LAI12M
@@ -357,7 +359,54 @@ name = SANDFRAC
         interp_option = default:four_pt+average_4pt+average_16pt+search
         rel_path = default:sandfrac_5m/
 ===============================
-name = VAR_SSO 
+name = EROD_MDB_SAND
+        priority = 1
+        dest_type = continuous
+        masked=water
+        z_dim_name=season_dimension
+        fill_missing=0.
+        interp_option = default:average_4pt
+        rel_path = default:erod_mdb_sand_0.1deg/
+===============================
+name = EROD_MDB_SILT
+        priority = 1
+        dest_type = continuous
+        masked=water
+        z_dim_name=season_dimension
+        fill_missing=0.
+        interp_option = default:average_4pt
+        rel_path = default:erod_mdb_silt_0.1deg/
+===============================
+name = EROD_MDB_CLAY
+        priority = 1
+        dest_type = continuous
+        masked=water
+        z_dim_name=season_dimension
+        fill_missing=0.
+        interp_option = default:average_4pt
+        rel_path = default:erod_mdb_clay_0.1deg/
+===============================
+name=BARENESS_DYN_CLIMO
+        priority = 1
+        dest_type=continuous
+        interp_option=modis_fpar:average_gcell(4.0)+four_pt+average_4pt+search
+        interp_option=default:average_gcell(4.0)+four_pt+average_4pt+search
+        z_dim_name=month
+        masked=water
+        fill_missing=0.
+        rel_path=modis_fpar:bareness_dyn_climo/
+        rel_path=default:bareness_dyn_climo/
+===============================
+name = TOPODEP
+        priority = 1
+        dest_type = continuous
+        masked=water
+        z_dim_name=topodep_dimension
+        fill_missing=0.
+        interp_option = default:average_4pt
+        rel_path = default:TOPODEP_30s/
+===============================
+name = VAR_SSO
         priority = 1
         dest_type = continuous
         fill_missing=0.

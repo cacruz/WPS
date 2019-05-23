@@ -65,7 +65,9 @@ program int2nc
    call set_debug_level(WARN)
 
    call read_met_init(trim(flnm), .true., '0000-00-00_00', istatus)
-   call check(nf_create(trim(nfile),nf_clobber,ncid))
+!   call check(nf_create(trim(nfile),nf_clobber,ncid))
+   ! EMK NUWRF...Use netCDF4
+   call check(nf_create(trim(nfile),ior(nf_clobber,nf_netcdf4),ncid))
 
    print*, 'OPENING FILE: ',trim(adjustl(flnm))
 

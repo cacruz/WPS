@@ -24,14 +24,14 @@ program g1print
   integer :: ierr, igherr
   integer :: cc
   character(len=100) :: fmt = '(I4,1X, &
-       & I3,1x, A5,1x, &
+       & I3,1x, A7,1x, &
        & I4, &
        & 2(1x,I4),2x,I4.4,2("-",I2.2),"_",I2.2,":",&
        & I2.2, 1x, "+", i3.2)'
   logical :: ivb = .FALSE.
   logical :: idb = .FALSE.
   integer :: year
-  character(len=5) :: field
+  character(len=7) :: field !EMK NUWRF
 
   flnm = ' '
   call parse_args(ierr, a1='v', l1=ivb, a2='V', l2=idb, hlast=flnm)
@@ -271,9 +271,9 @@ end subroutine parse_args
 
     integer, intent(in) :: ptv, centerid, procid, param, subc
     logical :: first=.true.
-    character (len=5), intent(out) :: field
-    character(len=5) :: table2(255), table129(255), afwa(255), ecmwf(255), &
-      table130(255), table131(255), table132(255)
+    character (len=7), intent(out) :: field ! EMK NUWRF
+    character(len=7) :: table2(255), table129(255), afwa(255), ecmwf(255), &
+      table130(255), table131(255), table132(255) ! EMK NUWRF
     common /paramids/ table2, table129, table130, table131, table132, afwa, ecmwf
 
      field = '     '
@@ -308,8 +308,8 @@ end subroutine parse_args
 end subroutine fieldname 
 !
      subroutine init_tables
-    character(len=5) :: table2(255), table129(255), afwa(255), ecmwf(255), &
-      table130(255), table131(255),  table132(255)
+    character(len=7) :: table2(255), table129(255), afwa(255), ecmwf(255), &
+      table130(255), table131(255),  table132(255) ! EMK NUWRF
     common /paramids/ table2, table129, table130, table131, table132, afwa, ecmwf
 
        ! afwa
@@ -500,8 +500,8 @@ end subroutine fieldname
 end subroutine init_tables
 
     block data  ptables
-    character(len=5) :: table2(255), table129(255), afwa(255), ecmwf(255), &
-      table130(255), table131(255), table132(255)
+    character(len=7) :: table2(255), table129(255), afwa(255), ecmwf(255), &
+      table130(255), table131(255), table132(255) ! EMK NUWRF
     common /paramids/ table2, table129, table130, table131, table132, afwa, ecmwf
 
   data table2 /'PRES','PRMSL','PTEND','PVORT','ICAHT','GP','HGT','DIST',&

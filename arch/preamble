@@ -49,7 +49,7 @@ PERL			=	perl
 
 RANLIB			=	echo
 
-WRF_DIR			=	../WRF_3.9.1
+WRF_DIR			=	../WRF
 
 WRF_INCLUDE     =       -I$(WRF_DIR)/external/io_netcdf \
                         -I$(WRF_DIR)/external/io_grib_share \

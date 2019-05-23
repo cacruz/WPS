@@ -102,7 +102,6 @@ module read_met_module
                                                     fg_data % startlon, &
                                                     fg_data % deltalat, &
                                                     fg_data % deltalon
-     
          ! Mercator
          else if (fg_data % iproj == 1) then
             fg_data % iproj = PROJ_MERC
@@ -281,6 +280,10 @@ module read_met_module
                                                     fg_data % deltalon, &
                                                     fg_data % earth_radius
 
+            ! EMK NUWRF...Make sure this is initialized
+            fg_data % dx = 0
+            fg_data % dy = 0
+
          ! Mercator
          else if (fg_data % iproj == 1) then
             fg_data % iproj = PROJ_MERC
@@ -314,6 +317,10 @@ module read_met_module
                                                     fg_data % deltalat, &
                                                     fg_data % deltalon, &
                                                     fg_data % earth_radius
+
+            ! EMK NUWRF...Make sure this is initialized
+            fg_data % dx = 0
+            fg_data % dy = 0
 
          ! Polar stereographic
          else if (fg_data % iproj == 5) then
