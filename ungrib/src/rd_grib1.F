@@ -103,6 +103,7 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
   integer :: np, ny, nx
   real :: Va, Vb, Vc, Vd
   real, external :: oned
+  logical :: ecmwf = .false. ! EMK NUWRF
 
   ierr = 0
 
@@ -529,6 +530,20 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
 ! If nx=65535, assume the grid is a thinned grid.
 ! Process only the NCEP grid IDs is 37 to 44.
   if (map%nx.eq.65535) then
+     ! EMK NUWRF...Special handling of ECMWF data on N256 Reduced Gaussian
+     ! grid
+     if ( (icenter .eq. 98) .and. (ksec2(4).eq.4) .and. (map%ny .eq. 512) &
+          .and. (infogrid(9) .eq. 256)) then
+        write(*,*) 'Originating center is ',icenter
+        write(*,*) 'Assuming ECMWF N256 Reduced Gaussian Grid'
+        lthinned = .TRUE.
+        map%nx = 1024 ! Max length near equator
+        map%dx = 0.3515625
+        deallocate(rdatarray)
+        allocate(rdatarray(map%nx * map%ny))
+        ecmwf = .true.
+     end if
+     if (.not. ecmwf) then ! EMK NUWRF
      if ( (icenter .ne. 7) .or. (KSEC1(5).lt.37) .or. (KSEC1(5).gt.44) ) then
         write(*,*) 'Originating center is ',icenter
         write(*,*) 'Grid ID is ',KSEC1(5),' Only WAFS grids 37-44 are supported'
@@ -538,6 +553,7 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
      lthinned = .TRUE.
      map%nx = 73
      map%dx = 1.25
+     end if ! EMK NUWRF
   else
      lthinned = .FALSE.
   endif
@@ -545,6 +561,12 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
 ! Unpack the 2D slab from the GRIB record, and put it in array rdatarray
 
   if (lthinned) then
+     ! EMK NUWRF...Special handling for ECMWF N512 grid
+     if ( (icenter .eq. 98) .and. (ksec2(4).eq.4) .and. (map%ny .eq. 512) &
+          .and. (infogrid(9) .eq. 256) .and. ecmwf) then
+        call proc_ecmwf_n256(rdatarray)
+     else
+
     if (allocated(thinnedDataArray)) deallocate(thinnedDataArray)
     allocate(thinnedDataArray(map%nx * map%ny))
     call gribdata(thinnedDataArray,3447)
@@ -607,12 +629,18 @@ SUBROUTINE rd_grib1(IUNIT, gribflnm, level, field, hdate,  &
           endif
        enddo
     enddo
+    end if ! EMK NUWRF...Special ECMWF handling
 else
   call gribdata(rdatarray,map%nx*map%ny)
 endif
 
 ! Some grids are broken and need to be reordered (e.g. NCEP-II in 1997).
 ! WPS assumes that the grids are ordered consistently with the start location.
+
+! EMK NUWRF...Reorder ECMWF N256 grid
+if ( (icenter .eq. 98) .and. (ksec2(4).eq.4) .and. (map%ny .eq. 512) .and. &
+     (infogrid(9) .eq. 256) .and. ecmwf .and. lthinned) then
+end if
 
   call mprintf(.true.,DEBUG, &
   "RD_GRIB1 icenter = %i , iprocess = %i , grid = %i",i1=icenter,i2=iprocess,i3=KSEC1(5))
@@ -630,6 +658,168 @@ endif
 ! GRIB decoding routines.
 
   call deallogrib
+
+! EMK NUWRF...Special subroutine to process ECMWF N256 reduced Gaussian grid
+! data.  This borrows heavily from RD_GRIB1 code for WAFS grids 37 through 44.
+contains
+   subroutine proc_ecmwf_n256(rdatarray)
+
+      use gridinfo ! For map structure
+
+      implicit none
+      
+      real,intent(inout) :: rdatarray(map%nx * map%ny)
+
+      real,allocatable  :: thinnedDataArray(:)
+      integer :: reduced_points(512) ! Number of columns per row
+      integer :: npoints_acc(513) ! One extra row for transformations
+      integer :: nx,ny
+      real :: Va,Vb,Vc,Vd
+      integer :: i,j
+
+      ! Number of longitude points in each latitude strip on
+      ! N256 reduced Gaussian grid. From ECMWF web page
+      ! https://software.ecmwf.int/wiki/display/EMOS/N256      
+      reduced_points = (/ 18,  &
+           25, 32, 40, 45, 50, 60, 64, 72, 72, 75,  &
+           81, 90, 96, 100, 108, 120, 120, 125, 135, 144,  &
+           150, 160, 160, 180, 180, 180, 192, 192, 200, 216,  &
+           216, 216, 225, 240, 240, 243, 250, 256, 270, 270,  &
+           288, 288, 288, 300, 300, 320, 320, 320, 324, 360,  &
+           360, 360, 360, 360, 360, 375, 375, 384, 384, 400,  &
+           400, 400, 432, 432, 432, 432, 432, 450, 450, 450,  &
+           480, 480, 480, 480, 480, 486, 500, 500, 500, 512,  &
+           512, 540, 540, 540, 540, 540, 576, 576, 576, 576,  &
+           576, 576, 600, 600, 600, 600, 600, 640, 640, 640,  &
+           640, 640, 640, 640, 640, 648, 675, 675, 675, 675,  &
+           675, 675, 720, 720, 720, 720, 720, 720, 720, 720,  &
+           720, 729, 729, 750, 750, 750, 750, 750, 768, 768,  &
+           768, 768, 800, 800, 800, 800, 800, 800, 800, 800,  &
+           810, 810, 864, 864, 864, 864, 864, 864, 864, 864,  &
+           864, 864, 864, 864, 864, 864, 900, 900, 900, 900,  &
+           900, 900, 900, 900, 900, 900, 900, 960, 960, 960,  &
+           960, 960, 960, 960, 960, 960, 960, 960, 960, 960,  &
+           960, 960, 960, 960, 960, 960, 960, 960, 960, 972,  &
+           972, 972, 972, 972, 1000, 1000, 1000, 1000, 1000, 1000,  &
+           1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,  &
+           1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000,  &
+           1000, 1000, 1000, 1000, 1000, 1000, 972, 972, 972, 972,  &
+           972, 960, 960, 960, 960, 960, 960, 960, 960, 960,  &
+           960, 960, 960, 960, 960, 960, 960, 960, 960, 960,  &
+           960, 960, 960, 900, 900, 900, 900, 900, 900, 900,  &
+           900, 900, 900, 900, 864, 864, 864, 864, 864, 864,  &
+           864, 864, 864, 864, 864, 864, 864, 864, 810, 810,  &
+           800, 800, 800, 800, 800, 800, 800, 800, 768, 768,  &
+           768, 768, 750, 750, 750, 750, 750, 729, 729, 720,  &
+           720, 720, 720, 720, 720, 720, 720, 720, 675, 675,  &
+           675, 675, 675, 675, 648, 640, 640, 640, 640, 640,  &
+           640, 640, 640, 600, 600, 600, 600, 600, 576, 576,  &
+           576, 576, 576, 576, 540, 540, 540, 540, 540, 512,  &
+           512, 500, 500, 500, 486, 480, 480, 480, 480, 480,  &
+           450, 450, 450, 432, 432, 432, 432, 432, 400, 400,  &
+           400, 384, 384, 375, 375, 360, 360, 360, 360, 360,  &
+           360, 324, 320, 320, 320, 300, 300, 288, 288, 288,  &
+           270, 270, 256, 250, 243, 240, 240, 225, 216, 216,  &
+           216, 200, 192, 192, 180, 180, 180, 160, 160, 150,  &
+           144, 135, 125, 120, 120, 108, 100, 96, 90, 81,  &
+           75, 72, 72, 64, 60, 50, 45, 40, 32, 25,  &
+           18 /)
+
+      ! Accumulate number of points for each latitude into array
+      npoints_acc(1) = 0
+      do i = 1, 512
+         npoints_acc(i+1) = npoints_acc(i) + reduced_points(i)
+      end do
+
+      allocate(thinnedDataArray(map%nx * map%ny))
+      call gribdata(thinnedDataArray,npoints_acc(513))
+      
+      do ny=1,512
+         np = reduced_points(ny)
+         do nx = 1,1024
+            ! Calculate x index (mj) of thinned array (real value)
+            mj = (nx-1.0)*(np-1.0)/(1024.-1.)
+            if (abs(mj - int(mj)) < 1.e-10) then
+               rdatarray((ny-1)*1024+nx) = &
+                    thinnedDataArray(npoints_acc(ny)+1+int(mj))
+            else
+!                ! Get the 2 closest values from thinned array
+!                Vb = thinnedDataArray(npoints_acc(ny)+1+int(mj))
+!                Vc = thinnedDataArray(npoints_acc(ny)+1+int(mj)+1)
+!                ! Get the next two closest, if available:
+!                Va = -999999.
+!                Vd = -999999.
+!                if (mj > 1.0) then
+!                   Va = thinnedDataArray(npoints_acc(ny)+1+int(mj)-1)
+!                end if
+!                if (mj < np-2) then
+!                   Vd = thinnedDataArray(npoints_acc(ny)+1+int(mj)+2)
+!                end if
+
+!                if ((Va < -999998.) .or. (Vd < -999998.)) then
+!                   ! Use 2-point linear interpolation.
+!                   rdatarray((ny-1)*1024+nx) = &
+!                        Vb*(int(mj)+1.0-mj) + Vc*(mj-int(mj))
+!                else
+!                   ! Use 4-point overlapping parabolic interpolation.
+!                   xmj = mj - float(int(mj))
+!                   rdatarray((ny-1)*1024+nx) = oned(xmj,Va,Vb,Vc,Vd)
+!                end if
+
+               ! NUWRF...Use 4-point overlapping parabolic interpolation.
+               ! But this requires care near the prime meridian.  If we're
+               ! too close, we must "wrap around" the globe to select
+               ! adjacent values.
+               if (mj > 1.0 .and. mj < np-2) then
+                  Va = thinnedDataArray(npoints_acc(ny)+1+int(mj)-1)
+                  Vb = thinnedDataArray(npoints_acc(ny)+1+int(mj)  )
+                  Vc = thinnedDataArray(npoints_acc(ny)+1+int(mj)+1)
+                  Vd = thinnedDataArray(npoints_acc(ny)+1+int(mj)+2)
+               else if ( mj < 1.0) then
+                  Va = thinnedDataArray(npoints_acc(ny)  +np       )
+                  Vb = thinnedDataArray(npoints_acc(ny)+1+int(mj)  )
+                  Vc = thinnedDataArray(npoints_acc(ny)+1+int(mj)+1)
+                  Vd = thinnedDataArray(npoints_acc(ny)+1+int(mj)+2)
+               else if ( mj > np-2 .and. mj < np-1 ) then
+                  Va = thinnedDataArray(npoints_acc(ny)+1+int(mj)-1)
+                  Vb = thinnedDataArray(npoints_acc(ny)+1+int(mj)  )
+                  Vc = thinnedDataArray(npoints_acc(ny)+1+int(mj)+1)
+                  Vd = thinnedDataArray(npoints_acc(ny)+1          )
+               else if ( mj > np-1 ) then
+                  Va = thinnedDataArray(npoints_acc(ny)+1+int(mj)-1)
+                  Vb = thinnedDataArray(npoints_acc(ny)+1+int(mj)  )
+                  Vc = thinnedDataArray(npoints_acc(ny)+1          )
+                  Vd = thinnedDataArray(npoints_acc(ny)+1        +1)
+               end if
+               xmj = mj - float(int(mj))
+               rdatarray((ny-1)*1024+nx) = oned(xmj,Va,Vb,Vc,Vd)
+
+            end if
+         end do
+      end do
+      
+      ! ECMWF data is flipped over (north to south instead of south to north)
+      ! We correct it here using the thinnedDataArray for temporary storage
+      thinnedDataArray(:) = rdatarray(:)
+      do j = 1, 512
+         do i = 1, 1024
+            rdatarray((512-j)*1024 + i) = thinnedDataArray((j-1)*1024 + i)
+         end do
+      end do
+      map%lat1 = -1*map%lat1
+
+      deallocate(thinnedDataArray)
+
+   end subroutine proc_ecmwf_n256
 
 END subroutine rd_grib1
 

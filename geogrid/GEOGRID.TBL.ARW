@@ -20,6 +20,10 @@ name = HGT_M
         rel_path =     gtopo_10m:topo_10m/
         rel_path =        lowres:topo_gmted2010_5m/
         rel_path =       default:topo_gmted2010_30s/
+        rel_path = 30s:topo_30s/
+        rel_path = 2m:topo_2m/
+        rel_path = 5m:topo_5m/
+        rel_path = 10m:topo_10m/
 ===============================
 name=LANDUSEF
         priority=1
