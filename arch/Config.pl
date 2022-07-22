@@ -7,7 +7,7 @@
 # the appropriate options for the type of machine, and the OS, and the compiler!
 
 $sw_perl_path   = perl;
-$sw_wrf_path   = "<SET ME>";
+$sw_wrf_path   = "../WRF/";
 $sw_netcdf_path = "";
 $sw_netcdff_lib = "";
 $sw_phdf5_path  = ""; 
@@ -17,6 +17,15 @@ $sw_ldflags      = "";
 $sw_compileflags = ""; 
 $sw_os   = "ARCH" ;         # ARCH will match any
 $sw_mach = "ARCH" ;         # ARCH will match any
+$sw_dep_lib_path = "";      # EMK NUWRF for netCDF4
+# metgrid & geogrid are linked to wrf lib which in turns depends on openmp library
+# so -lgomp is needed under GNU compilers, for intel -liomp5 -lpthread
+$sw_hdf5 = "-lhdf5_hl -lhdf5 -ldl -lgomp"; # EMK NUWRF for netCDF4
+$sw_zlib = "-lz"; # EMK NUWRF for netCDF4
+$sw_gpfs_path = ""; # EMK NUWRF for netCDF4
+$sw_gpfs_lib  = "-lgpfs"; # EMK NUWRF for netCDF4
+$sw_curl_path = ""; # EMK NUWRF for netCDF4
+$sw_curl_lib  = "-lcurl"; # EMK NUWRF for netCDF4
 #$sw_compL = "";
 #$sw_compI = "";
 #$sw_fdefs = "";
@@ -61,6 +70,35 @@ while(substr( $ARGV[0], 0, 1 ) eq "-")
         # separated by ! instead. Replace with spaces here.
         $sw_ldflags =~ s/!/ /g ;
     }    
+    # EMK NUWRF...netCDF4 support
+    if(substr( $ARGV[0], 1, 13 ) eq "dep_lib_path=" )
+    {
+	$sw_dep_lib_path = substr( $ARGV[0], 14 ) ;
+	$sw_dep_lib_path =~ s/\r|\n/ /g ;
+    }
+    if ( substr( $ARGV[0], 1, 5 ) eq "gpfs=" )
+    {
+	$sw_gpfs_path = substr( $ARGV[0], 6 ) ;
+	if ( $sw_gpfs_path ne "" ) 
+	{
+	    if ( substr( $sw_gpfs_path, -1, 1 ) eq "/" )
+	    {
+		$sw_gpfs_path = substr($sw_gpfs_path, 0, length($sw_gpfs_path)-1 ) ;
+	    }
+	}
+    }
+    if ( substr( $ARGV[0], 1, 5 ) eq "curl=" )
+    {
+	$sw_curl_path = substr( $ARGV[0], 6 ) ;
+	if ( $sw_curl_path ne "" )
+	{
+	    if ( substr( $sw_curl_path, -1, 1 ) eq "/" )
+	    {
+		$sw_curl_path = substr($sw_curl_path, 0, length($sw_curl_path)-1 ) ;
+	    }
+	}
+    }
+    #EMK NUWRF END
     shift @ARGV;
 } # end while
 
@@ -295,6 +333,28 @@ open CONFIGURE_WRF, "> configure.wps" || die "cannot Open for writing... configu
     # apply substitutions to the preamble...
     while (<ARCH_PREAMBLE>)
     {
+# EMK NUWRF
+	if ( $ENV{NETCDF4} )
+	{ if ( $ENV{NETCDF4} eq "1" )
+	  {
+	      if ( /(^CPPFLAGS.*=|^TRADFLAG.*=)/ ) 
+	      { $_  =~ s/\r|\n//g; 
+		$_ .= " \$\(NETCDF4_IO_OPTS\)\n" ; 
+	      }
+	  }
+	}
+	$_ =~ s/CONFIGURE_DEP_LIB_PATH/$sw_dep_lib_path/g ; 
+	if ( $sw_dep_lib_path ne "" )
+	{ if (/^HDF5.*=/)
+	  { $_  =~ s/\r|\n//g;
+	    $_ .= " " . $sw_hdf5 . "\n" ;
+	  }
+	  if (/^ZLIB.*=/)
+	  { $_  =~ s/\r|\n//g;
+	    $_ .= " " . $sw_zlib . "\n" ;
+	  }
+	}
+# EMK NUWRF END
         if($sw_os eq "CYGWIN_NT")
         {
             $_ =~ s/^WRF_DIR.*$/COMPILING_ON_CYGWIN_NT = yes/;  # will get from environment
